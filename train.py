@@ -17,6 +17,7 @@
 
 import time
 import models
+import pdb
 import numpy as np
 import partition_utils
 import tensorflow as tf
@@ -145,6 +146,8 @@ def main(unused_argv):
                                             FLAGS.num_clusters,
                                             FLAGS.diag_lambda)
 
+  # in val/test, metis first cluster over the whole graph and select node based on val/test_mask
+  # is this plausible? why not cluster on the val/test nodes
   (_, val_features_batches, val_support_batches, y_val_batches,
    val_mask_batches) = utils.preprocess(full_adj, test_feats, y_val, val_mask,
                                         np.arange(num_data),

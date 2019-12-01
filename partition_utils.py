@@ -19,15 +19,19 @@ import time
 import metis
 import scipy.sparse as sp
 import tensorflow as tf
+import pdb
 
 
-def partition_graph(adj, idx_nodes, num_clusters):
-  """partition a graph by METIS."""
+def partition_graph(adj, idx_nodes, num_clusters, y=None):
+  """
+  partition a graph by METIS.
+  idx_nodes: visible_data (train_data)
+  y: add lable constraint
+  """
 
   start_time = time.time()
   num_nodes = len(idx_nodes)
   num_all_nodes = adj.shape[0]
-
   neighbor_intervals = []
   neighbors = []
   edge_cnt = 0
@@ -36,10 +40,10 @@ def partition_graph(adj, idx_nodes, num_clusters):
   train_ord_map = dict()
   train_adj_lists = [[] for _ in range(num_nodes)]
   for i in range(num_nodes):
-    rows = train_adj_lil[i].rows[0]
+    rows = train_adj_lil[i].rows[0] # columns of each row
     # self-edge needs to be removed for valid format of METIS
     if i in rows:
-      rows.remove(i)
+      rows.remove(i)  # remove self edges
     train_adj_lists[i] = rows
     neighbors += rows
     edge_cnt += len(rows)
@@ -49,7 +53,7 @@ def partition_graph(adj, idx_nodes, num_clusters):
   if num_clusters > 1:
     _, groups = metis.part_graph(train_adj_lists, num_clusters, seed=1)
   else:
-    groups = [0] * num_nodes
+    groups = [0] * num_nodes  # TODO,cluster based on labels
 
   part_row = []
   part_col = []
@@ -59,15 +63,20 @@ def partition_graph(adj, idx_nodes, num_clusters):
     gp_idx = groups[nd_idx]
     nd_orig_idx = idx_nodes[nd_idx]
     parts[gp_idx].append(nd_orig_idx)
-    for nb_orig_idx in adj[nd_orig_idx].indices:
+    for nb_orig_idx in adj[nd_orig_idx].indices: # neibourhood index of node nd_orig_idx
       nb_idx = train_ord_map[nb_orig_idx]
-      if groups[nb_idx] == gp_idx:
+      if (y is not None and any(y[nd_idx]==y[nb_idx])) or (groups[nb_idx]==gp_idx):
+      # if y is None or any(y[nd_idx]==y[nb_idx]) is False:
+      #   continue
+      # elif groups[nb_idx] != gp_idx:
+      #   continue
         part_data.append(1)
         part_row.append(nd_orig_idx)
         part_col.append(nb_orig_idx)
   part_data.append(0)
   part_row.append(num_all_nodes - 1)
-  part_col.append(num_all_nodes - 1)
+  part_col.append(num_all_nodes - 1) # guarantee boundary of coo_matrix
+  # pdb.set_trace()
   part_adj = sp.coo_matrix((part_data, (part_row, part_col))).tocsr()
 
   tf.logging.info('Partitioning done. %f seconds.', time.time() - start_time)

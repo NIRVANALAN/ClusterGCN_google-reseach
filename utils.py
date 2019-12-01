@@ -123,7 +123,8 @@ def preprocess_multicluster(adj,
                             train_mask,
                             num_clusters,
                             block_size,
-                            diag_lambda=-1):
+                            diag_lambda=-1
+                            ):
   """Generate the batch for multiple clusters."""
 
   features_batches = []
@@ -132,7 +133,8 @@ def preprocess_multicluster(adj,
   train_mask_batches = []
   total_nnz = 0
   np.random.shuffle(parts)
-  for _, st in enumerate(range(0, num_clusters, block_size)):
+  import pdb; pdb.set_trace()
+  for _, st in enumerate(range(0, num_clusters, block_size)):  # TODO why?
     pt = parts[st]
     for pt_idx in range(st + 1, min(st + block_size, num_clusters)):
       pt = np.concatenate((pt, parts[pt_idx]), axis=0)
@@ -166,7 +168,7 @@ def preprocess(adj,
 
   # Do graph partitioning
   part_adj, parts = partition_utils.partition_graph(adj, visible_data,
-                                                    num_clusters)
+                                                    num_clusters, y_train)
   if diag_lambda == -1:
     part_adj = normalize_adj(part_adj)
   else:
