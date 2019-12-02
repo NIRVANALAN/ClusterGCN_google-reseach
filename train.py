@@ -137,7 +137,7 @@ def main(unused_argv):
   # Partition graph and do preprocessing
   if FLAGS.bsize > 1:
     _, parts = partition_utils.partition_graph(train_adj, visible_data,
-                                               FLAGS.num_clusters)
+                                               FLAGS.num_clusters, y_train)
     parts = [np.array(pt) for pt in parts]
   else:
     (parts, features_batches, support_batches, y_train_batches,
@@ -208,12 +208,13 @@ def main(unused_argv):
        train_mask_batches) = utils.preprocess_multicluster(
            train_adj, parts, train_feats, y_train, train_mask,
            FLAGS.num_clusters, FLAGS.bsize, FLAGS.diag_lambda)
-      for pid in range(len(features_batches)):
+      for batch_id in range(len(features_batches)):
         # Use preprocessed batch data
-        features_b = features_batches[pid]
-        support_b = support_batches[pid]
-        y_train_b = y_train_batches[pid]
-        train_mask_b = train_mask_batches[pid]
+        # import pdb; pdb.set_trace()
+        features_b = features_batches[batch_id]
+        support_b = support_batches[batch_id]
+        y_train_b = y_train_batches[batch_id]
+        train_mask_b = train_mask_batches[batch_id]
         # Construct feed dictionary
         feed_dict = utils.construct_feed_dict(features_b, support_b, y_train_b,
                                               train_mask_b, placeholders)
@@ -223,12 +224,12 @@ def main(unused_argv):
                         feed_dict=feed_dict)
     else:
       np.random.shuffle(idx_parts)
-      for pid in idx_parts:
+      for batch_id in idx_parts:
         # Use preprocessed batch data
-        features_b = features_batches[pid]
-        support_b = support_batches[pid]
-        y_train_b = y_train_batches[pid]
-        train_mask_b = train_mask_batches[pid]
+        features_b = features_batches[batch_id]
+        support_b = support_batches[batch_id]
+        y_train_b = y_train_batches[batch_id]
+        train_mask_b = train_mask_batches[batch_id]
         # Construct feed dictionary
         feed_dict = utils.construct_feed_dict(features_b, support_b, y_train_b,
                                               train_mask_b, placeholders)

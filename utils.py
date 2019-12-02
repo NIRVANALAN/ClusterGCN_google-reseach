@@ -133,7 +133,8 @@ def preprocess_multicluster(adj,
   train_mask_batches = []
   total_nnz = 0
   np.random.shuffle(parts)
-  import pdb; pdb.set_trace()
+  # for now
+  num_clusters = len(parts)
   for _, st in enumerate(range(0, num_clusters, block_size)):  # TODO why?
     pt = parts[st]
     for pt_idx in range(st + 1, min(st + block_size, num_clusters)):

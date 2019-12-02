@@ -14,4 +14,4 @@
 
 #!/bin/bash
 
-python train.py --dataset ppi --data_prefix ../dataset/ --multilabel --num_layers 5 --num_clusters 25 --bsize 2 --layernorm --precalc --hidden1 2048 --dropout 0.2 --weight_decay 0  --early_stopping 1000 --num_clusters_val 2 --num_clusters_test 1 --epochs 400 --save_name model/ppimodel/label_cluster --diag_lambda 1
+python train.py --dataset reddit --data_prefix ../dataset/ --nomultilabel --num_layers 4 --num_clusters 1500 --bsize 10 --hidden1 512 --dropout 0.2 --weight_decay 0  --early_stopping 200 --num_clusters_val 20 --num_clusters_test 1 --epochs 130 --save_name ./model/redditmodel --learning_rate 0.005 --diag_lambda 0.0001 --novalidation

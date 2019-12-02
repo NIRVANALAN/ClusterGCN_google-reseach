@@ -19,8 +19,17 @@ import time
 import metis
 import scipy.sparse as sp
 import tensorflow as tf
+import numpy as np
 import pdb
 
+def partition_graph_by_label(label):
+  groups = []
+  # import pdb; pdb.set_trace()
+  for node in range(label.shape[0]):
+    node_label = np.argwhere(label[node,:]).squeeze(-1)
+    node_label = node_label[0] if len(node_label) else -1
+    groups.append(node_label)
+  return groups
 
 def partition_graph(adj, idx_nodes, num_clusters, y=None):
   """
@@ -50,10 +59,15 @@ def partition_graph(adj, idx_nodes, num_clusters, y=None):
     neighbor_intervals.append(edge_cnt)
     train_ord_map[idx_nodes[i]] = i
 
-  if num_clusters > 1:
-    _, groups = metis.part_graph(train_adj_lists, num_clusters, seed=1)
+  if y is not None:
+    groups = partition_graph_by_label(y) 
+    num_clusters = y.shape[1]  # set cluster number to the size of label
+    print(f'num_clusters: {num_clusters}, partition graph by label')
   else:
-    groups = [0] * num_nodes  # TODO,cluster based on labels
+    if num_clusters > 1:
+      _, groups = metis.part_graph(train_adj_lists, num_clusters, seed=1)
+    else:
+      groups = [0] * num_nodes  # TODO,cluster based on labels
 
   part_row = []
   part_col = []
@@ -61,12 +75,14 @@ def partition_graph(adj, idx_nodes, num_clusters, y=None):
   parts = [[] for _ in range(num_clusters)]
   for nd_idx in range(num_nodes):
     gp_idx = groups[nd_idx]
+    if gp_idx < 0:
+      continue
     nd_orig_idx = idx_nodes[nd_idx]
     parts[gp_idx].append(nd_orig_idx)
     for nb_orig_idx in adj[nd_orig_idx].indices: # neibourhood index of node nd_orig_idx
       nb_idx = train_ord_map[nb_orig_idx]
-      if (y is not None and any(y[nd_idx]==y[nb_idx])) or (groups[nb_idx]==gp_idx):
-      # if y is None or any(y[nd_idx]==y[nb_idx]) is False:
+      # if (y is not None and any(y[nd_idx]==y[nb_idx])) or (y is None and groups[nb_idx]==gp_idx):
+      if y is None or any(y[nd_idx]==y[nb_idx]) is False:
       #   continue
       # elif groups[nb_idx] != gp_idx:
       #   continue
