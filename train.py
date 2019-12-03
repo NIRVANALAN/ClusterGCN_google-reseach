@@ -58,6 +58,8 @@ flags.DEFINE_bool(
     'Whether to pre-calculate the first layer (AX preprocessing).')
 flags.DEFINE_bool('validation', True,
                   'Print validation accuracy after each epoch.')
+flags.DEFINE_bool('label_cluster', False,
+                  'use label to cluster.')
 
 
 def load_data(data_prefix, dataset_str, precalc):
@@ -135,16 +137,17 @@ def main(unused_argv):
    visible_data) = load_data(FLAGS.data_prefix, FLAGS.dataset, FLAGS.precalc)
 
   # Partition graph and do preprocessing
+  label_cluster = y_train if FLAGS.label_cluster else None
   if FLAGS.bsize > 1:
     _, parts = partition_utils.partition_graph(train_adj, visible_data,
-                                               FLAGS.num_clusters, y_train)
+                                               FLAGS.num_clusters, label_cluster)
     parts = [np.array(pt) for pt in parts]
   else:
     (parts, features_batches, support_batches, y_train_batches,
      train_mask_batches) = utils.preprocess(train_adj, train_feats, y_train,
                                             train_mask, visible_data,
                                             FLAGS.num_clusters,
-                                            FLAGS.diag_lambda)
+                                            FLAGS.diag_lambda, label_cluster=label_cluster)
 
   # in val/test, metis first cluster over the whole graph and select node based on val/test_mask
   # is this plausible? why not cluster on the val/test nodes

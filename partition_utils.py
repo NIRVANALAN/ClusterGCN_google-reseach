@@ -64,6 +64,7 @@ def partition_graph(adj, idx_nodes, num_clusters, y=None):
     num_clusters = y.shape[1]  # set cluster number to the size of label
     print(f'num_clusters: {num_clusters}, partition graph by label')
   else:
+    print(f'start clustering, num_clusters:{num_clusters}')
     if num_clusters > 1:
       _, groups = metis.part_graph(train_adj_lists, num_clusters, seed=1)
     else:

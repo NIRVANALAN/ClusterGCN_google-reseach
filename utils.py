@@ -164,12 +164,13 @@ def preprocess(adj,
                train_mask,
                visible_data,
                num_clusters,
-               diag_lambda=-1):
+               diag_lambda=-1,
+               label_cluster=None):
   """Do graph partitioning and preprocessing for SGD training."""
 
   # Do graph partitioning
   part_adj, parts = partition_utils.partition_graph(adj, visible_data,
-                                                    num_clusters, y_train)
+                                                    num_clusters, label_cluster)
   if diag_lambda == -1:
     part_adj = normalize_adj(part_adj)
   else:
