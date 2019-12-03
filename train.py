@@ -58,7 +58,7 @@ flags.DEFINE_bool(
     'Whether to pre-calculate the first layer (AX preprocessing).')
 flags.DEFINE_bool('validation', True,
                   'Print validation accuracy after each epoch.')
-flags.DEFINE_bool('label_cluster', False,
+flags.DEFINE_bool('label_cluster', True,
                   'use label to cluster.')
 
 

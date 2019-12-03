@@ -82,18 +82,13 @@ def partition_graph(adj, idx_nodes, num_clusters, y=None):
     parts[gp_idx].append(nd_orig_idx)
     for nb_orig_idx in adj[nd_orig_idx].indices: # neibourhood index of node nd_orig_idx
       nb_idx = train_ord_map[nb_orig_idx]
-      # if (y is not None and any(y[nd_idx]==y[nb_idx])) or (y is None and groups[nb_idx]==gp_idx):
-      if y is None or any(y[nd_idx]==y[nb_idx]) is False:
-      #   continue
-      # elif groups[nb_idx] != gp_idx:
-      #   continue
+      if groups[nb_idx] == gp_idx:
         part_data.append(1)
         part_row.append(nd_orig_idx)
         part_col.append(nb_orig_idx)
   part_data.append(0)
   part_row.append(num_all_nodes - 1)
   part_col.append(num_all_nodes - 1) # guarantee boundary of coo_matrix
-  # pdb.set_trace()
   part_adj = sp.coo_matrix((part_data, (part_row, part_col))).tocsr()
 
   tf.logging.info('Partitioning done. %f seconds.', time.time() - start_time)
