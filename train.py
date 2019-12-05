@@ -20,6 +20,7 @@ import models
 import pdb
 import numpy as np
 import partition_utils
+import scipy.sparse as sp
 import tensorflow as tf
 import utils
 
@@ -144,7 +145,7 @@ def main(unused_argv):
     parts = [np.array(pt) for pt in parts]
   else:
     (parts, features_batches, support_batches, y_train_batches,
-     train_mask_batches) = utils.preprocess(train_adj, train_feats, y_train,
+     train_mask_batches, part_cluster) = utils.preprocess(train_adj, train_feats, y_train,
                                             train_mask, visible_data,
                                             FLAGS.num_clusters,
                                             FLAGS.diag_lambda, label_cluster=label_cluster)
@@ -152,13 +153,13 @@ def main(unused_argv):
   # in val/test, metis first cluster over the whole graph and select node based on val/test_mask
   # is this plausible? why not cluster on the val/test nodes
   (_, val_features_batches, val_support_batches, y_val_batches,
-   val_mask_batches) = utils.preprocess(full_adj, test_feats, y_val, val_mask,
+   val_mask_batches, val_part_cluster) = utils.preprocess(full_adj, test_feats, y_val, val_mask,
                                         np.arange(num_data),
                                         FLAGS.num_clusters_val,
                                         FLAGS.diag_lambda)
 
   (_, test_features_batches, test_support_batches, y_test_batches,
-   test_mask_batches) = utils.preprocess(full_adj, test_feats, y_test,
+   test_mask_batches, test_part_cluster) = utils.preprocess(full_adj, test_feats, y_test,
                                          test_mask, np.arange(num_data),
                                          FLAGS.num_clusters_test,
                                          FLAGS.diag_lambda)
@@ -208,16 +209,19 @@ def main(unused_argv):
     np.random.shuffle(idx_parts)
     if FLAGS.bsize > 1:
       (features_batches, support_batches, y_train_batches,
-       train_mask_batches) = utils.preprocess_multicluster(
+       train_mask_batches, part_cluster) = utils.preprocess_multicluster(
            train_adj, parts, train_feats, y_train, train_mask,
            FLAGS.num_clusters, FLAGS.bsize, FLAGS.diag_lambda)
       for batch_id in range(len(features_batches)):
         # Use preprocessed batch data
-        # import pdb; pdb.set_trace()
-        features_b = features_batches[batch_id]
+        features_b = features_batches[batch_id] # cluster_node_number*1204
         support_b = support_batches[batch_id]
-        y_train_b = y_train_batches[batch_id]
-        train_mask_b = train_mask_batches[batch_id]
+        y_train_b = y_train_batches[batch_id] # cluster_node_number*41
+        train_mask_b = train_mask_batches[batch_id]  # all true
+        # cluster_adj = part_cluster[batch_id]
+        # import pdb; pdb.set_trace()
+        # sp.save_npz(f'cluster/cluster_adj_{batch_id}', cluster_adj)
+        # np.save(f'cluster/cluster_y_{batch_id}', y_train_b)
         # Construct feed dictionary
         feed_dict = utils.construct_feed_dict(features_b, support_b, y_train_b,
                                               train_mask_b, placeholders)
@@ -233,6 +237,10 @@ def main(unused_argv):
         support_b = support_batches[batch_id]
         y_train_b = y_train_batches[batch_id]
         train_mask_b = train_mask_batches[batch_id]
+        cluster_adj = part_cluster[batch_id]
+        import pdb; pdb.set_trace()
+        sp.save_npz(f'cluster/cluster_adj_{batch_id}', cluster_adj)
+        np.save(f'cluster/cluster_y_{batch_id}', y_train_b)
         # Construct feed dictionary
         feed_dict = utils.construct_feed_dict(features_b, support_b, y_train_b,
                                               train_mask_b, placeholders)

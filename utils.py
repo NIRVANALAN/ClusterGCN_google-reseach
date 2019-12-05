@@ -135,6 +135,7 @@ def preprocess_multicluster(adj,
   np.random.shuffle(parts)
   # for now
   num_clusters = len(parts)
+  merged_cluster = []
   for _, st in enumerate(range(0, num_clusters, block_size)):  # TODO why?
     pt = parts[st]
     for pt_idx in range(st + 1, min(st + block_size, num_clusters)):
@@ -142,6 +143,7 @@ def preprocess_multicluster(adj,
     features_batches.append(features[pt, :])
     y_train_batches.append(y_train[pt, :])
     support_now = adj[pt, :][:, pt]
+    merged_cluster.append(support_now)
     if diag_lambda == -1:
       support_batches.append(sparse_to_tuple(normalize_adj(support_now)))
     else:
@@ -155,7 +157,7 @@ def preprocess_multicluster(adj,
         train_pt.append(newidx)
     train_mask_batches.append(sample_mask(train_pt, len(pt)))
   return (features_batches, support_batches, y_train_batches,
-          train_mask_batches)
+          train_mask_batches, merged_cluster)
 
 
 def preprocess(adj,
@@ -182,9 +184,11 @@ def preprocess(adj,
   y_train_batches = []
   train_mask_batches = []
   total_nnz = 0
+  part_cluster = []
   for pt in parts:
     features_batches.append(features[pt, :])
     now_part = part_adj[pt, :][:, pt]
+    part_cluster.append(now_part)
     total_nnz += now_part.count_nonzero()
     support_batches.append(sparse_to_tuple(now_part))
     y_train_batches.append(y_train[pt, :])
@@ -195,7 +199,7 @@ def preprocess(adj,
         train_pt.append(newidx)
     train_mask_batches.append(sample_mask(train_pt, len(pt)))
   return (parts, features_batches, support_batches, y_train_batches,
-          train_mask_batches)
+          train_mask_batches, part_cluster)
 
 
 def load_graphsage_data(dataset_path, dataset_str, normalize=True):

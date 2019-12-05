@@ -1,4 +1,8 @@
 *__pycache__
 *.pyc
 model
+.ipynb_checkpoints/*
 checkpoint
+cluster/*
+.vscode
+# .ipynb_checkpoints/probabilistics-checkpoint.ipynb

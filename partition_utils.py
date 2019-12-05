@@ -22,6 +22,7 @@ import tensorflow as tf
 import numpy as np
 from collections import Counter
 from tabletext import to_text 
+import networkx as nx
 import pdb
 
 
@@ -36,6 +37,7 @@ def partition_graph_by_label(label):
 
 def print_label_table(label):
   from tabletext import to_text 
+  from collections import Counter
   labeled_node = np.argwhere(label)[:,1]
   print(f'all_node: {len(label)}, labeld: {len(labeled_node)}')
   label_stat = Counter(labeled_node)
@@ -45,7 +47,7 @@ def print_label_table(label):
   print(to_text(label_table))
   pass
 
-def partition_graph(adj, idx_nodes, num_clusters, label=None, lable_cluster=False, stat=False):
+def partition_graph(adj, idx_nodes, num_clusters, label=None, lable_cluster=False, stat=False, visu=False):
     """
     partition a graph by METIS.
     idx_nodes: visible_data (train_data)
@@ -106,14 +108,7 @@ def partition_graph(adj, idx_nodes, num_clusters, label=None, lable_cluster=Fals
                 part_col.append(nb_orig_idx)
     # statistics -----
     if stat and label is not None:
-        # lable distribution
-        # label_distribution = Counter(np.argmax(label, axis=1))
         print_label_table(label)
-        # label_table = [['label', 'number','percent']]
-        # for _label in label_distribution:
-        #   label_table.append([_label, label_table[_label], label_table[_label]/len(label)])
-        #   print(to_text(label_table))
-        #cluster_staticsitcs_table = [['cluster_size', 'label','label_count', 'label_percent']]
         for cluster in parts:
             cluster_label = label[cluster, :]
             print_label_table(cluster_label)
@@ -124,6 +119,12 @@ def partition_graph(adj, idx_nodes, num_clusters, label=None, lable_cluster=Fals
     part_row.append(num_all_nodes - 1)
     part_col.append(num_all_nodes - 1)  # guarantee boundary of coo_matrix
     part_adj = sp.coo_matrix((part_data, (part_row, part_col))).tocsr()
+    # sp.save_npz('cluster.npz', part_adj)
+
+    # if visu: # visualize the cluster
+    #   cluster_G = nx.from_scipy_sparse_matrix(part_adj)
+    #   nx.draw(cluster_G, pos=nx.spring_layout(cluster_G))
+    #   pass
 
     tf.logging.info('Partitioning done. %f seconds.', time.time() - start_time)
     return part_adj, parts
