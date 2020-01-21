@@ -61,6 +61,8 @@ flags.DEFINE_bool('validation', True,
                   'Print validation accuracy after each epoch.')
 flags.DEFINE_bool('label_cluster', False,
                   'use label to cluster.')
+flags.DEFINE_bool('inference', False,
+                  'Inference without train.')
 
 
 def load_data(data_prefix, dataset_str, precalc):
@@ -68,6 +70,7 @@ def load_data(data_prefix, dataset_str, precalc):
   (num_data, train_adj, full_adj, feats, train_feats, test_feats, labels,
    train_data, val_data,
    test_data) = utils.load_graphsage_data(data_prefix, dataset_str)
+  # import pdb; pdb.set_trace()
   visible_data = train_data
 
   y_train = np.zeros(labels.shape)
@@ -94,7 +97,7 @@ def load_data(data_prefix, dataset_str, precalc):
 
 # Define model evaluation function
 def evaluate(sess, model, val_features_batches, val_support_batches,
-             y_val_batches, val_mask_batches, val_data, placeholders):
+             y_val_batches, val_mask_batches, val_data, placeholders, clusters_adj):
   """evaluate GCN model."""
   total_pred = []
   total_lab = []
@@ -102,12 +105,14 @@ def evaluate(sess, model, val_features_batches, val_support_batches,
   total_acc = 0
 
   num_batches = len(val_features_batches)
-  for i in range(num_batches):
-    features_b = val_features_batches[i]
-    support_b = val_support_batches[i]
-    y_val_b = y_val_batches[i]
-    val_mask_b = val_mask_batches[i]
+  for batch_id in range(num_batches):
+    features_b = val_features_batches[batch_id]
+    support_b = val_support_batches[batch_id]
+    y_val_b = y_val_batches[batch_id]
+    val_mask_b = val_mask_batches[batch_id]
     num_data_b = np.sum(val_mask_b)
+    if clusters_adj is not None:
+      cluster_adj = clusters_adj[batch_id]
     if num_data_b == 0:
       continue
     else:
@@ -123,6 +128,10 @@ def evaluate(sess, model, val_features_batches, val_support_batches,
 
   total_pred = np.vstack(total_pred)
   total_lab = np.vstack(total_lab)
+  # import pdb; pdb.set_trace()
+  sp.save_npz(f'cluster/clusters_adj', clusters_adj)
+  np.save(f'cluster/cluster_y', total_lab)
+  np.save(f'cluster/total_pred', total_pred)
   loss = total_loss / len(val_data)
   acc = total_acc / len(val_data)
 
@@ -204,76 +213,77 @@ def main(unused_argv):
   cost_val = []
   total_training_time = 0.0
   # Train model
-  for epoch in range(FLAGS.epochs):
-    t = time.time()
-    np.random.shuffle(idx_parts)
-    if FLAGS.bsize > 1:
-      (features_batches, support_batches, y_train_batches,
-       train_mask_batches, part_cluster) = utils.preprocess_multicluster(
-           train_adj, parts, train_feats, y_train, train_mask,
-           FLAGS.num_clusters, FLAGS.bsize, FLAGS.diag_lambda)
-      for batch_id in range(len(features_batches)):
-        # Use preprocessed batch data
-        features_b = features_batches[batch_id] # cluster_node_number*1204
-        support_b = support_batches[batch_id]
-        y_train_b = y_train_batches[batch_id] # cluster_node_number*41
-        train_mask_b = train_mask_batches[batch_id]  # all true
-        # cluster_adj = part_cluster[batch_id]
-        # import pdb; pdb.set_trace()
-        # sp.save_npz(f'cluster/cluster_adj_{batch_id}', cluster_adj)
-        # np.save(f'cluster/cluster_y_{batch_id}', y_train_b)
-        # Construct feed dictionary
-        feed_dict = utils.construct_feed_dict(features_b, support_b, y_train_b,
-                                              train_mask_b, placeholders)
-        feed_dict.update({placeholders['dropout']: FLAGS.dropout})
-        # Training step
-        outs = sess.run([model.opt_op, model.loss, model.accuracy],
-                        feed_dict=feed_dict)
-    else:
+  if not FLAGS.inference:
+    for epoch in range(FLAGS.epochs):
+      t = time.time()
       np.random.shuffle(idx_parts)
-      for batch_id in idx_parts:
-        # Use preprocessed batch data
-        features_b = features_batches[batch_id]
-        support_b = support_batches[batch_id]
-        y_train_b = y_train_batches[batch_id]
-        train_mask_b = train_mask_batches[batch_id]
-        cluster_adj = part_cluster[batch_id]
-        import pdb; pdb.set_trace()
-        sp.save_npz(f'cluster/cluster_adj_{batch_id}', cluster_adj)
-        np.save(f'cluster/cluster_y_{batch_id}', y_train_b)
-        # Construct feed dictionary
-        feed_dict = utils.construct_feed_dict(features_b, support_b, y_train_b,
-                                              train_mask_b, placeholders)
-        feed_dict.update({placeholders['dropout']: FLAGS.dropout})
-        # Training step
-        outs = sess.run([model.opt_op, model.loss, model.accuracy],
-                        feed_dict=feed_dict)
+      if FLAGS.bsize > 1:
+        (features_batches, support_batches, y_train_batches,
+        train_mask_batches, part_cluster) = utils.preprocess_multicluster(
+            train_adj, parts, train_feats, y_train, train_mask,
+            FLAGS.num_clusters, FLAGS.bsize, FLAGS.diag_lambda)
+        for batch_id in range(len(features_batches)):
+          # Use preprocessed batch data
+          features_b = features_batches[batch_id] # cluster_node_number*1204
+          support_b = support_batches[batch_id]
+          y_train_b = y_train_batches[batch_id] # cluster_node_number*41
+          train_mask_b = train_mask_batches[batch_id]  # all true
+          cluster_adj = part_cluster[batch_id]
+          # import pdb; pdb.set_trace()
+          # sp.save_npz(f'cluster/cluster_adj_{batch_id}', cluster_adj)
+          # np.save(f'cluster/cluster_y_{batch_id}', y_train_b)
+          # Construct feed dictionary
+          feed_dict = utils.construct_feed_dict(features_b, support_b, y_train_b,
+                                                train_mask_b, placeholders)
+          feed_dict.update({placeholders['dropout']: FLAGS.dropout})
+          # Training step
+          outs = sess.run([model.opt_op, model.loss, model.accuracy],
+                          feed_dict=feed_dict)
+      else:
+        np.random.shuffle(idx_parts)
+        for batch_id in idx_parts:
+          # Use preprocessed batch data
+          features_b = features_batches[batch_id]
+          support_b = support_batches[batch_id]
+          y_train_b = y_train_batches[batch_id]
+          train_mask_b = train_mask_batches[batch_id]
+          cluster_adj = part_cluster[batch_id]
+          # import pdb; pdb.set_trace()
+          # sp.save_npz(f'cluster/cluster_adj_{batch_id}', cluster_adj)
+          # np.save(f'cluster/cluster_y_{batch_id}', y_train_b)
+          # Construct feed dictionary
+          feed_dict = utils.construct_feed_dict(features_b, support_b, y_train_b,
+                                                train_mask_b, placeholders)
+          feed_dict.update({placeholders['dropout']: FLAGS.dropout})
+          # Training step
+          outs = sess.run([model.opt_op, model.loss, model.accuracy],
+                          feed_dict=feed_dict)
 
-    total_training_time += time.time() - t
-    print_str = 'Epoch: %04d ' % (epoch + 1) + 'training time: {:.5f} '.format(
-        total_training_time) + 'train_acc= {:.5f} '.format(outs[2])
+      total_training_time += time.time() - t
+      print_str = 'Epoch: %04d ' % (epoch + 1) + 'training time: {:.5f} '.format(
+          total_training_time) + 'train_acc= {:.5f} '.format(outs[2])
 
-    # Validation
-    if FLAGS.validation:
-      cost, acc, micro, macro = evaluate(sess, model, val_features_batches,
-                                         val_support_batches, y_val_batches,
-                                         val_mask_batches, val_data,
-                                         placeholders)
-      cost_val.append(cost)
-      print_str += 'val_acc= {:.5f} '.format(
-          acc) + 'mi F1= {:.5f} ma F1= {:.5f} '.format(micro, macro)
+      # Validation
+      if FLAGS.validation:
+        cost, acc, micro, macro = evaluate(sess, model, val_features_batches,
+                                          val_support_batches, y_val_batches,
+                                          val_mask_batches, val_data,
+                                          placeholders)
+        cost_val.append(cost)
+        print_str += 'val_acc= {:.5f} '.format(
+            acc) + 'mi F1= {:.5f} ma F1= {:.5f} '.format(micro, macro)
 
-    tf.logging.info(print_str)
+      tf.logging.info(print_str)
 
-    if epoch > FLAGS.early_stopping and cost_val[-1] > np.mean(
-        cost_val[-(FLAGS.early_stopping + 1):-1]):
-      tf.logging.info('Early stopping...')
-      break
+      if epoch > FLAGS.early_stopping and cost_val[-1] > np.mean(
+          cost_val[-(FLAGS.early_stopping + 1):-1]):
+        tf.logging.info('Early stopping...')
+        break
 
-  tf.logging.info('Optimization Finished!')
+    tf.logging.info('Optimization Finished!')
 
-  # Save model
-  saver.save(sess, FLAGS.save_name)
+    # Save model
+    saver.save(sess, FLAGS.save_name)
 
   # Load model (using CPU for inference)
   with tf.device('/cpu:0'):
@@ -284,7 +294,7 @@ def main(unused_argv):
     # Testing
     test_cost, test_acc, micro, macro = evaluate(
         sess_cpu, model, test_features_batches, test_support_batches,
-        y_test_batches, test_mask_batches, test_data, placeholders)
+        y_test_batches, test_mask_batches, test_data, placeholders, test_part_cluster)
     print_str = 'Test set results: ' + 'cost= {:.5f} '.format(
         test_cost) + 'accuracy= {:.5f} '.format(
             test_acc) + 'mi F1= {:.5f} ma F1= {:.5f}'.format(micro, macro)
