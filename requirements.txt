@@ -12,7 +12,7 @@ Keras-Preprocessing==1.1.0
 Markdown==3.1.1
 metis==0.2a4
 networkx==1.11
-numpy==1.17.4
+numpy==1.22.0
 opt-einsum==3.1.0
 protobuf==3.11.0
 scikit-learn==0.21.3
